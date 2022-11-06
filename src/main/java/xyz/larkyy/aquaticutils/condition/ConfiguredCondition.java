@@ -28,5 +28,4 @@ public class ConfiguredCondition {
         failActions.run(player);
         return false;
     }
-
 }
