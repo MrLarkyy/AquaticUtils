@@ -2,7 +2,6 @@ package xyz.larkyy.aquaticutils.condition;
 
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.FileConfiguration;
-import xyz.larkyy.aquaticutils.AquaticPlugin;
 import xyz.larkyy.aquaticutils.action.ActionList;
 import xyz.larkyy.aquaticutils.action.Actions;
 import xyz.larkyy.aquaticutils.condition.impl.PermissionCondition;
@@ -15,7 +14,6 @@ import java.util.Map;
 public class Conditions {
 
     private final Map<String,Condition> conditionTypes;
-
     public Conditions() {
         conditionTypes = new HashMap<>();
         loadDefaultConditions();
@@ -37,12 +35,12 @@ public class Conditions {
         return conditionTypes.get(id.toUpperCase());
     }
 
-    public static ConfiguredCondition loadCondition(FileConfiguration cfg, String path) {
+    public static ConfiguredCondition loadCondition(FileConfiguration cfg, String path, Conditions conditions, Actions actions) {
         String type = cfg.getString(path+".type");
         if (type == null) {
             return null;
         }
-        var condition = Conditions.inst().getCondition(type);
+        var condition = conditions.getCondition(type);
         if (condition == null) {
             Bukkit.broadcastMessage("Unknown condition");
             return null;
@@ -53,34 +51,30 @@ public class Conditions {
             filledArgs.put(arg,cfg.getString(path+"."+arg));
         }
 
-        ActionList successActions = Actions.loadActionList(cfg,path+".success-actions");
-        ActionList failActions = Actions.loadActionList(cfg,path+".fail-actions");
+        ActionList successActions = Actions.loadActionList(cfg,path+".success-actions",actions,conditions);
+        ActionList failActions = Actions.loadActionList(cfg,path+".fail-actions",actions,conditions);
 
         return new ConfiguredCondition(condition,filledArgs,successActions,failActions);
     }
 
-    public static ConditionList loadConditionList(FileConfiguration cfg, String path) {
+    public static ConditionList loadConditionList(FileConfiguration cfg, String path, Conditions conditions, Actions actions) {
         if (!cfg.contains(path)) {
             return new ConditionList();
         }
-        List<ConfiguredCondition> conditions = new ArrayList<>();
+        List<ConfiguredCondition> conditionsList = new ArrayList<>();
         for (String str : cfg.getConfigurationSection(path).getKeys(false)) {
 
-            ConfiguredCondition condition = loadCondition(cfg,path+"."+str);
+            ConfiguredCondition condition = loadCondition(cfg,path+"."+str,conditions, actions);
             if (condition != null) {
-                conditions.add(condition);
+                conditionsList.add(condition);
             }
         }
-        if (conditions.isEmpty()) {
-            return new ConditionList(new ActionList(), new ActionList(),conditions);
+        if (conditionsList.isEmpty()) {
+            return new ConditionList(new ActionList(), new ActionList(),conditionsList);
         }
-        ActionList successActions = Actions.loadActionList(cfg,path+".success-actions");
-        ActionList failActions = Actions.loadActionList(cfg,path+".fail-actions");
+        ActionList successActions = Actions.loadActionList(cfg,path+".success-actions",actions,conditions);
+        ActionList failActions = Actions.loadActionList(cfg,path+".fail-actions",actions,conditions);
 
-        return new ConditionList(failActions,successActions,conditions);
-    }
-
-    public static Conditions inst() {
-        return AquaticPlugin.instance.conditions();
+        return new ConditionList(failActions,successActions,conditionsList);
     }
 }

@@ -2,7 +2,6 @@ package xyz.larkyy.aquaticutils.action;
 
 
 import org.bukkit.configuration.file.FileConfiguration;
-import xyz.larkyy.aquaticutils.AquaticPlugin;
 import xyz.larkyy.aquaticutils.action.impl.MessageAction;
 import xyz.larkyy.aquaticutils.condition.ConditionList;
 import xyz.larkyy.aquaticutils.condition.Conditions;
@@ -41,60 +40,60 @@ public class Actions {
         return actionTypes;
     }
 
-    public static ActionList loadActionList(FileConfiguration cfg, String path) {
+    public static ActionList loadActionList(FileConfiguration cfg, String path, Actions actions, Conditions conditions) {
         if (!cfg.contains(path)) {
             return new ActionList();
         }
-        List<ConfiguredAction> actions = new ArrayList<>();
+        List<ConfiguredAction> actionsList = new ArrayList<>();
         Object obj = cfg    .get(path);
         if (obj instanceof List<?>) {
             List<String> list = (List<String>) obj;
             for (String str : list) {
-                ConfiguredAction action = translateAction(str);
+                ConfiguredAction action = translateAction(str,actions);
                 if (action == null) {
                     continue;
                 }
-                actions.add(action);
+                actionsList.add(action);
             }
-            return new ActionList(actions,new ConditionList());
+            return new ActionList(actionsList,new ConditionList());
         } else {
             for (String str : cfg.getConfigurationSection(path).getKeys(false)) {
-                ConfiguredAction action = loadAction(cfg, path+"."+str);
+                ConfiguredAction action = loadAction(cfg, path+"."+str,actions,conditions);
                 if (action == null) {
                     continue;
                 }
-                actions.add(action);
+                actionsList.add(action);
             }
 
             ConditionList conditionList;
             if (cfg.contains(path+".conditions")) {
-                conditionList = Conditions.loadConditionList(cfg, path+".conditions");
+                conditionList = Conditions.loadConditionList(cfg, path+".conditions",conditions,actions);
             } else {
                 conditionList = new ConditionList();
             }
-            return new ActionList(actions,conditionList);
+            return new ActionList(actionsList,conditionList);
         }
     }
 
-    public static ConfiguredAction loadAction(FileConfiguration cfg, String path) {
+    public static ConfiguredAction loadAction(FileConfiguration cfg, String path, Actions actions, Conditions conditions) {
 
-        var action = translateAction(cfg.getString(path+".value"));
+        var action = translateAction(cfg.getString(path+".value"),actions);
         if (action == null) {
             return null;
         }
         if (cfg.contains(path+".conditions")) {
-            action.setConditions(Conditions.loadConditionList(cfg,path+".conditions"));
+            action.setConditions(Conditions.loadConditionList(cfg,path+".conditions",conditions,actions));
         }
         return action;
     }
 
-    public static ConfiguredAction translateAction(String value) {
+    public static ConfiguredAction translateAction(String value,Actions actions) {
         String args;
 
-        for (String key : Actions.inst().actionTypes.keySet()) {
+        for (String key : actions.actionTypes.keySet()) {
             if (value.startsWith("["+key+"]")) {
                 args = value.substring(key.length()+2).trim();
-                var action = Actions.inst().getAction(key);
+                var action = actions.getAction(key);
                 return new ConfiguredAction(
                         new ConditionList(new ActionList(), new ActionList()),
                         action,args
@@ -102,10 +101,5 @@ public class Actions {
             }
         }
         return null;
-    }
-
-
-    public static Actions inst() {
-        return AquaticPlugin.instance.actions();
     }
 }
